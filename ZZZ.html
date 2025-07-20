@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Link Keeper</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Link Keeper - Save and organize your favorite website links with previews">
+    <meta name="keywords" content="bookmark manager, link keeper, website organizer, link storage">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Your Name">
+    <title>Link Keeper - Save Your Favorite Links</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 2em; }
         h1 { color: #333; }
@@ -13,6 +18,24 @@
         a { color: #007acc; text-decoration: none; }
         a:hover { text-decoration: underline; }
         button { margin-left: 0.5em; }
+        #clearAllBtn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 1em;
+        }
+        .link-info {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
+        }
+        #categoryFilter {
+            margin-bottom: 1em;
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
@@ -20,21 +43,39 @@
     <form id="linkForm">
         <input type="text" id="linkTitle" placeholder="Title" required>
         <input type="text" id="linkUrl" placeholder="URL (https://...)" required>
+        <input type="text" id="category" placeholder="Category" required>
         <button type="submit">Add Link</button>
     </form>
+    <select id="categoryFilter">
+        <option value="">All Categories</option>
+    </select>
+    <button id="clearAllBtn">Clear All Links</button>
     <ul id="linkList"></ul>
     <script>
         const form = document.getElementById('linkForm');
         const linkList = document.getElementById('linkList');
+        const categoryFilter = document.getElementById('categoryFilter');
+        const clearAllBtn = document.getElementById('clearAllBtn');
         let links = JSON.parse(localStorage.getItem('links') || '[]');
 
         function renderLinks() {
             linkList.innerHTML = '';
-            links.forEach((link, idx) => {
+            const filterValue = categoryFilter.value;
+            const filteredLinks = filterValue ? links.filter(link => link.category === filterValue) : links;
+            
+            // Update category filter options
+            const categories = [...new Set(links.map(link => link.category))];
+            categoryFilter.innerHTML = '<option value="">All Categories</option>' +
+                categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+
+            filteredLinks.forEach((link, idx) => {
                 const li = document.createElement('li');
+                const saveDate = new Date(link.timestamp).toLocaleDateString();
                 const imgUrl = `https://image.thum.io/get/width/200/crop/600/${encodeURIComponent(link.url)}`;
-                li.innerHTML = `<img src="${imgUrl}" alt="Preview" style="width:100px;height:auto;vertical-align:middle;margin-right:10px;border-radius:4px;border:1px solid #ccc;">
+                li.innerHTML = `
+                    <img src="${imgUrl}" alt="Preview" style="width:100px;height:auto;vertical-align:middle;margin-right:10px;border-radius:4px;border:1px solid #ccc;">
                     <a href="${link.url}" target="_blank">${link.title}</a>
+                    <span class="link-info">${link.category} - Saved: ${saveDate}</span>
                     <button onclick="removeLink(${idx})">Remove</button>`;
                 linkList.appendChild(li);
             });
@@ -52,14 +93,30 @@
             e.preventDefault();
             const title = document.getElementById('linkTitle').value.trim();
             const url = document.getElementById('linkUrl').value.trim();
+            const category = document.getElementById('category').value.trim();
             if (!/^https?:\/\//.test(url)) {
                 alert('Please enter a valid URL starting with http:// or https://');
                 return;
             }
-            links.push({ title, url });
+            links.push({ 
+                title, 
+                url, 
+                category,
+                timestamp: new Date().toISOString()
+            });
             localStorage.setItem('links', JSON.stringify(links));
             renderLinks();
             form.reset();
+        });
+
+        categoryFilter.addEventListener('change', renderLinks);
+
+        clearAllBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to remove all links?')) {
+                localStorage.removeItem('links');
+                links = [];
+                renderLinks();
+            }
         });
 
         renderLinks();
